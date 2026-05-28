@@ -6,13 +6,34 @@
     Identify and report on all unassigned policies in Microsoft Intune.
 
 .DESCRIPTION
-    This script connects to Microsoft Graph and retrieves all device configuration policies
-    configured in Intune, then checks which policies have no assignments to users, groups,
-    or devices. Unassigned policies represent potential configuration drift, unused resources,
-    or incomplete policy deployment. The script generates detailed reports in CSV format,
-    highlighting unassigned policies with creation dates, policy types, and recommendations.
-    This helps administrators maintain clean policy governance and identify policies that
-    may need assignment or removal.
+    This script connects to Microsoft Graph and retrieves all device applications, configuration 
+    policies, compliance policies, and scripts configured in Intune, then checks which items have no
+    assignments to users, groups, or devices. Unassigned items represent potential configuration
+    drift, unused resources, or incomplete deployment. The script generates detailed reports in
+    CSV format, highlighting unassigned items with creation dates, types, and recommendations.
+    This helps administrators maintain clean policy governance and identify policies and scripts
+    that may need assignment or removal.
+
+    Checks the following Intune item types:
+    - Device Configuration Policies (traditional)
+    - Settings Catalog Policies
+    - Administrative Templates (Group Policy)
+    - Legacy Compliance Policies (deviceCompliancePolicies)
+    - New Compliance Policies (compliancePolicies)
+    - Windows PowerShell Scripts (deviceManagementScripts)
+    - macOS Shell Scripts (deviceShellScripts)
+    - Windows Autopilot Deployment Profiles
+    - Cloud PC Provisioning Policies (Windows 365)
+    - Cloud PC User Settings (Windows 365)
+    - Endpoint Security Policies / Security Baselines (deviceManagement/intents)
+    - Mobile App Assignments (deviceAppManagement/mobileApps)
+    - iOS App Protection Policies (iosManagedAppProtections)
+    - Android App Protection Policies (androidManagedAppProtections)
+    - Windows App Protection Policies / MAM (windowsManagedAppProtections)
+    - Windows Information Protection - MDM (mdmWindowsInformationProtectionPolicies)
+    - Windows Information Protection - MAM (windowsInformationProtectionPolicies)
+    - App Configuration Policies - Managed Devices (mobileAppConfigurations)
+    - App Configuration Policies - Managed Apps / MAM (targetedManagedAppConfigurations)
 
 .TAGS
     Monitoring
@@ -22,18 +43,23 @@
 
 .PERMISSIONS
     DeviceManagementConfiguration.Read.All
+    DeviceManagementScripts.Read.All
+    DeviceManagementServiceConfig.Read.All
+    CloudPC.Read.All
+    DeviceManagementApps.Read.All
 
 .AUTHOR
     Ugur Koc
 
 .VERSION
-    1.0
+    2.0
 
 .CHANGELOG
     1.0 - Initial release
+    2.0 - Added support for new policy types, improved error handling, and enhanced reporting
 
 .LASTUPDATE
-    2025-05-29
+    2026-05-27
 
 .EXAMPLE
     .\check-unassigned-policies.ps1
@@ -50,10 +76,14 @@
 .NOTES
     - Requires Microsoft.Graph.Authentication module: Install-Module Microsoft.Graph.Authentication
     - Requires appropriate permissions in Azure AD
-    - Checks all policy types: Device Configuration, Settings Catalog, Administrative Templates
-    - Unassigned policies may indicate incomplete deployment or unused configurations
+    - Checks Device Configuration, Settings Catalog, Administrative Templates, Compliance Policies, Scripts, Autopilot, and CloudPC
+    - Autopilot deployment profiles require DeviceManagementServiceConfig.Read.All
+    - CloudPC provisioning policies and user settings require CloudPC.Read.All
+    - All deviceAppManagement endpoints (mobile apps, app protection, app config) require DeviceManagementApps.Read.All
+    - deviceManagement/intents covers legacy endpoint security policies and security baselines (no extra permission needed)
+    - Unassigned items may indicate incomplete deployment or unused configurations
     - Regular monitoring helps maintain policy governance and compliance
-    - Consider removing or assigning policies that have been unassigned for extended periods
+    - Consider removing or assigning items that have been unassigned for extended periods
 #>
 
 [CmdletBinding()]
@@ -162,7 +192,9 @@ else {
 
 # Initialize required modules
 $RequiredModules = @(
-    "Microsoft.Graph.Authentication"
+    "Microsoft.Graph.Authentication",
+    "Microsoft.Graph.Compliance",
+    "Microsoft.Graph.DeviceManagement"
 )
 
 try {
@@ -189,7 +221,11 @@ try {
         # Local execution - Use interactive authentication
         Write-Information "Connecting to Microsoft Graph with interactive authentication..." -InformationAction Continue
         $Scopes = @(
-            "DeviceManagementConfiguration.Read.All"
+            "DeviceManagementConfiguration.Read.All",
+            "DeviceManagementScripts.Read.All",
+            "DeviceManagementServiceConfig.Read.All",
+            "CloudPC.Read.All",
+            "DeviceManagementApps.Read.All"
         )
         Connect-MgGraph -Scopes $Scopes -NoWelcome -ErrorAction Stop
         Write-Information "✓ Successfully connected to Microsoft Graph" -InformationAction Continue

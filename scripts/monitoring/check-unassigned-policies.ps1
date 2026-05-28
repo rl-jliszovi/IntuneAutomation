@@ -351,6 +351,16 @@ function Get-PolicyRiskLevel {
         return "High"
     }
     
+    # High risk: Endpoint security intents and app protection / WIP policies
+    if ($PolicyType -match "(EndpointSecurityIntent|iOSAppProtection|AndroidAppProtection|WindowsAppProtection|WindowsInformationProtection)") {
+        return "High"
+    }
+    
+    # Medium risk: App configuration policies and mobile apps
+    if ($PolicyType -match "(ManagedDeviceAppConfig|ManagedAppConfig|MobileApp)") {
+        return "Medium"
+    }
+    
     # Medium risk: Policies older than 30 days
     if ($DaysOld.Days -gt 30) {
         return "Medium"
